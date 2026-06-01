@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WoT Prize Tank Roulette</title>
+  <style>
+    :root {
+      --bg: #09131d;
+      --panel: rgba(13, 31, 45, .96);
+      --panel-2: rgba(24, 39, 52, .96);
+      --line: rgba(255, 145, 0, .52);
+      --orange: #ff9100;
+      --orange-2: #ffb23e;
+      --text: #f8fbff;
+      --muted: #a9bed0;
+      --green: #58e3b0;
+      --card-w: 250px;
+      --card-h: 210px;
+      --gap: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; min-height: 100%; background: transparent; color: var(--text); }
+    body {
+      font-family: Inter, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 50% 10%, rgba(255, 145, 0, .10), transparent 32%),
+        linear-gradient(140deg, #060d14, #0b151e 52%, #090f15);
+      padding: 26px;
+    }
+
+    .app {
+      width: min(1540px, calc(100vw - 52px));
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(12, 29, 43, .98), rgba(8, 19, 29, .98));
+      box-shadow: 0 18px 54px rgba(0, 0, 0, .38), inset 0 0 0 1px rgba(255,255,255,.025);
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      padding: 22px 28px 18px;
+      border-bottom: 1px solid rgba(255, 145, 0, .22);
+      background: linear-gradient(90deg, rgba(255,145,0,.08), transparent 40%);
+    }
+    .eyebrow {
+      margin-bottom: 6px;
+      color: #c4dbef;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 3vw, 48px);
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      text-shadow: 0 3px 0 rgba(0,0,0,.32);
+    }
+    .subtitle {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .badge {
+      min-width: 190px;
+      padding: 12px 18px;
+      border: 1px solid rgba(255,145,0,.55);
+      border-radius: 16px;
+      background: rgba(255,145,0,.09);
+      text-align: center;
+    }
+    .badge small { display: block; color: #b9cfe0; font-size: 11px; font-weight: 900; letter-spacing: 1.2px; }
+    .badge strong { display: block; margin-top: 4px; color: var(--orange); font-size: 23px; }
+
+    .roulette-wrap {
+      position: relative;
+      padding: 30px 0 34px;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(0,0,0,.80), transparent 11%, transparent 89%, rgba(0,0,0,.80)),
+        radial-gradient(circle at 50% 50%, rgba(255,145,0,.10), transparent 50%);
+    }
+    .roulette-window {
+      position: relative;
+      height: calc(var(--card-h) + 28px);
+      overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,.06);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      background: rgba(0,0,0,.12);
+    }
+    .roulette-track {
+      position: absolute;
+      left: 0;
+      top: 14px;
+      display: flex;
+      gap: var(--gap);
+      will-change: transform;
+      transform: translate3d(0,0,0);
+    }
+
+    .tank-card {
+      position: relative;
+      flex: 0 0 var(--card-w);
+      width: var(--card-w);
+      height: var(--card-h);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 16px;
+      background:
+        linear-gradient(160deg, rgba(255,255,255,.06), transparent 52%),
+        rgba(22, 39, 53, .94);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+    }
+    .tank-card::after {
+      content: "";
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 5px;
+      background: linear-gradient(90deg, #8a5100, var(--orange), #ffd074);
+    }
+    .tank-card.latest-loaded {
+      border-color: rgba(255, 177, 58, .96);
+      animation: latestTankPulse .95s cubic-bezier(.18,.78,.18,1);
+      box-shadow:
+        0 0 0 2px rgba(255,145,0,.24),
+        0 0 30px rgba(255,145,0,.68),
+        inset 0 0 20px rgba(255,145,0,.15);
+    }
+    @keyframes latestTankPulse {
+      0% { transform: translateY(8px) scale(.90); filter: brightness(.70); opacity: .25; }
+      55% { transform: translateY(0) scale(1.035); filter: brightness(1.22); opacity: 1; }
+      100% { transform: translateY(0) scale(1); filter: brightness(1); opacity: 1; }
+    }
+    .tank-card img {
+      display: block;
+      width: 100%;
+      height: 154px;
+      object-fit: contain;
+      padding: 13px 12px 2px;
+      filter: drop-shadow(0 12px 8px rgba(0,0,0,.34));
+    }
+    .tank-name {
+      min-height: 52px;
+      display: grid;
+      place-items: center;
+      padding: 5px 12px 12px;
+      text-align: center;
+      font-size: 16px;
+      line-height: 1.08;
+      font-weight: 900;
+    }
+
+    .marker {
+      position: absolute;
+      z-index: 6;
+      top: 7px;
+      bottom: 7px;
+      left: 50%;
+      width: 4px;
+      transform: translateX(-50%);
+      background: linear-gradient(#fff6ce, var(--orange), #fff6ce);
+      box-shadow: 0 0 22px var(--orange), 0 0 6px white;
+      pointer-events: none;
+    }
+    .marker::before, .marker::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+    }
+    .marker::before { top: -3px; border-top: 22px solid var(--orange); }
+    .marker::after { bottom: -3px; border-bottom: 22px solid var(--orange); }
+
+    .lower {
+      display: grid;
+      grid-template-columns: 1fr 385px;
+      gap: 18px;
+      padding: 0 22px 22px;
+    }
+
+    .controls, .winner {
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      background: rgba(255,255,255,.035);
+      padding: 16px;
+    }
+    .controls h2, .winner h2 {
+      margin: 0 0 12px;
+      color: #c4dbef;
+      font-size: 14px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .buttons { display: grid; grid-template-columns: 1fr 230px; gap: 12px; }
+    button {
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 13px;
+      padding: 16px 18px;
+      color: white;
+      background: #21394e;
+      font-size: 15px;
+      font-weight: 950;
+      letter-spacing: .3px;
+      cursor: pointer;
+      transition: transform .16s ease, filter .16s ease, opacity .16s ease;
+    }
+    button:hover { transform: translateY(-1px); filter: brightness(1.10); }
+    button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
+    .spin { background: linear-gradient(135deg, #ff8a00, #d96800); font-size: 20px; }
+    .reset { background: #273e52; }
+    .hint { margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+
+    .load-store {
+      width: 100%;
+      margin-top: 12px;
+      background: linear-gradient(135deg, #1e4d68, #17364d);
+      border-color: rgba(79, 195, 255, .34);
+      font-size: 17px;
+    }
+    .loader-panel {
+      margin-top: 12px;
+      padding: 13px 14px 14px;
+      border: 1px solid rgba(79, 195, 255, .20);
+      border-radius: 13px;
+      background: rgba(8, 23, 35, .72);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .24s ease, transform .24s ease;
+      pointer-events: none;
+    }
+    .loader-panel.visible { opacity: 1; transform: translateY(0); }
+    .loader-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      color: #bfe9ff;
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: .2px;
+    }
+    .loader-head strong { color: var(--orange-2); }
+    .loader-bar {
+      height: 9px;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 4px rgba(0,0,0,.38);
+    }
+    .loader-bar span {
+      display: block;
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #35c8ff, var(--orange), #ffd37c);
+      box-shadow: 0 0 12px rgba(255,145,0,.60);
+      transition: width .22s ease;
+    }
+    .roulette-window.loading::after {
+      content: "ПІДКЛЮЧЕННЯ ДО МАГАЗИНУ...";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: #bfe9ff;
+      font-size: 21px;
+      font-weight: 950;
+      letter-spacing: 1.6px;
+      text-shadow: 0 0 16px rgba(79,195,255,.7);
+      background:
+        linear-gradient(90deg, rgba(9,19,29,.96), rgba(14,33,48,.90), rgba(9,19,29,.96));
+      animation: loaderPulse 1.05s ease-in-out infinite;
+      z-index: 5;
+    }
+    @keyframes loaderPulse {
+      0%, 100% { opacity: .62; }
+      50% { opacity: 1; }
+    }
+
+    .winner-box {
+      min-height: 188px;
+      display: grid;
+      place-items: center;
+      border: 1px dashed rgba(255,145,0,.36);
+      border-radius: 14px;
+      background: radial-gradient(circle, rgba(255,145,0,.08), transparent 72%);
+      text-align: center;
+      overflow: hidden;
+    }
+    .winner-box.empty { color: #a5bacb; font-size: 15px; font-weight: 800; }
+    .winner-box img {
+      width: 100%;
+      max-height: 115px;
+      object-fit: contain;
+      padding: 7px 12px 0;
+      filter: drop-shadow(0 10px 7px rgba(0,0,0,.4));
+    }
+    .winner-title {
+      padding: 0 12px 12px;
+      color: var(--orange-2);
+      font-size: 22px;
+      font-weight: 950;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+    .status {
+      margin-top: 11px;
+      color: #a8bfd1;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .status { display: none !important; }
+    .status.ok { color: var(--green); }
+    .status.err { color: #ff8080; }
+
+    .flash { animation: flash 1.15s ease-out 1; }
+    @keyframes flash {
+      0% { box-shadow: 0 0 0 rgba(255,145,0,0); }
+      25% { box-shadow: 0 0 52px rgba(255,145,0,.95), inset 0 0 22px rgba(255,145,0,.25); }
+      100% { box-shadow: 0 0 0 rgba(255,145,0,0); }
+    }
+
+    .confetti { position: fixed; inset: 0; pointer-events:none; overflow:hidden; z-index:20; }
+    .confetti i {
+      position:absolute;
+      top:-24px;
+      width:10px; height:18px;
+      background: var(--orange);
+      opacity:.95;
+      animation: fall linear forwards;
+    }
+    @keyframes fall {
+      to { transform: translate3d(var(--dx), 110vh, 0) rotate(var(--rot)); opacity:.2; }
+    }
+
+    @media (max-width: 980px) {
+      :root { --card-w: 190px; --card-h: 178px; }
+      .tank-card img { height: 125px; }
+      .tank-name { font-size: 14px; }
+      .lower { grid-template-columns: 1fr; }
+      .badge { min-width: 150px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <div class="eyebrow">World of Tanks • Призовий розіграш</div>
+        <h1>Розіграш танку від Старперів</h1>
+</div>
+      <div class="badge">
+        <small>ТАНКІВ У РОЗІГРАШІ</small>
+        <strong id="tankCount">0</strong>
+      </div>
+    </header>
+
+    <section class="roulette-wrap">
+      <div class="roulette-window" id="rouletteWindow">
+        <div class="roulette-track" id="track"></div>
+        <div class="marker"></div>
+      </div>
+    </section>
+
+    <section class="lower">
+      <div class="controls">
+        <h2>Керування розіграшем</h2>
+        <div class="buttons">
+          <button class="spin" id="spinBtn">🎁 ВІДКРИТИ ПРИЗОВИЙ КЕЙС</button>
+          <button class="reset" id="resetBtn">↻ СКИНУТИ РЕЗУЛЬТАТ</button>
+        </div>
+        <button class="load-store" id="loadStoreBtn">⬇ ЗАВАНТАЖИТИ ПРЕМІУМТАНКИ З МАГАЗИНУ</button>
+        <div class="loader-panel" id="loaderPanel" aria-live="polite">
+          <div class="loader-head">
+            <span id="loaderText">Очікування завантаження...</span>
+            <strong id="loaderPercent">0%</strong>
+          </div>
+          <div class="loader-bar"><span id="loaderBar"></span></div>
+        </div>
+<div class="status" id="status"></div>
+      </div>
+
+      <aside class="winner">
+        <h2>Виграшний танк</h2>
+        <div class="winner-box empty" id="winnerBox">Результат з’явиться після прокручування</div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="confetti" id="confetti"></div>
+
+  <script src="tank_list.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const track = document.getElementById("track");
+      const rouletteWindow = document.getElementById("rouletteWindow");
+      const spinBtn = document.getElementById("spinBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const winnerBox = document.getElementById("winnerBox");
+      const tankCount = document.getElementById("tankCount");
+      const status = document.getElementById("status");
+      const confetti = document.getElementById("confetti");
+      const loadStoreBtn = document.getElementById("loadStoreBtn");
+      const loaderPanel = document.getElementById("loaderPanel");
+      const loaderText = document.getElementById("loaderText");
+      const loaderPercent = document.getElementById("loaderPercent");
+      const loaderBar = document.getElementById("loaderBar");
+
+      const CARD_W = 250;
+      const GAP = 14;
+      const STEP = CARD_W + GAP;
+      let pool = [];
+      let sequence = [];
+      let spinning = false;
+      let currentX = 0;
+      let storeLoaded = false;
+      let loadingStore = false;
+      let fullPool = [];
+
+      function imageUrl(file) {
+        return "Images/" + encodeURIComponent(file).replace(/%2F/g, "/");
+      }
+
+      function tankTitle(file) {
+        return file.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+      }
+
+      function secureRandom() {
+        if (window.crypto && crypto.getRandomValues) {
+          const array = new Uint32Array(1);
+          crypto.getRandomValues(array);
+          return array[0] / 4294967296;
+        }
+        return Math.random();
+      }
+
+      function randomInt(min, max) {
+        return Math.floor(secureRandom() * (max - min + 1)) + min;
+      }
+
+      function shuffled(items) {
+        const result = [...items];
+        for (let i = result.length - 1; i > 0; i--) {
+          const j = randomInt(0, i);
+          [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+      }
+
+      function createCard(file, isLatest = false) {
+        const card = document.createElement("article");
+        card.className = isLatest ? "tank-card latest-loaded" : "tank-card";
+        card.innerHTML = `
+          <img src="${imageUrl(file)}" alt="${tankTitle(file)}">
+          <div class="tank-name">${tankTitle(file)}</div>
+        `;
+        return card;
+      }
+
+      function createSequence() {
+        sequence = [];
+        if (!pool.length) {
+          track.innerHTML = "";
+          currentX = 0;
+          track.style.transition = "none";
+          track.style.transform = "translate3d(0,0,0)";
+          return;
+        }
+        for (let i = 0; i < 16; i++) sequence.push(...shuffled(pool));
+        track.innerHTML = "";
+        sequence.forEach(file => track.appendChild(createCard(file)));
+        currentX = 0;
+        track.style.transition = "none";
+        track.style.transform = "translate3d(0,0,0)";
+      }
+
+      function showLatestLoadedTank(file) {
+        sequence = [...pool];
+        const targetIndex = sequence.length - 1;
+
+        track.innerHTML = "";
+        sequence.forEach((name, index) => {
+          track.appendChild(createCard(name, index === targetIndex));
+        });
+
+        const markerX = rouletteWindow.clientWidth / 2;
+        const centeredX = markerX - (targetIndex * STEP + CARD_W / 2);
+
+        if (targetIndex === 0) {
+          currentX = centeredX;
+          track.style.transition = "none";
+          track.style.transform = `translate3d(${centeredX}px,0,0)`;
+          return;
+        }
+
+        const previousCenteredX = markerX - ((targetIndex - 1) * STEP + CARD_W / 2);
+        track.style.transition = "none";
+        track.style.transform = `translate3d(${previousCenteredX}px,0,0)`;
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            track.style.transition = "transform 760ms cubic-bezier(.16,.74,.14,1)";
+            track.style.transform = `translate3d(${centeredX}px,0,0)`;
+          });
+        });
+
+        currentX = centeredX;
+      }
+
+      function showWinner(file) {
+        winnerBox.className = "winner-box flash";
+        winnerBox.innerHTML = `
+          <div>
+            <img src="${imageUrl(file)}" alt="${tankTitle(file)}">
+            <div class="winner-title">${tankTitle(file)}</div>
+          </div>
+        `;
+        launchConfetti();
+      }
+
+      function launchConfetti() {
+        confetti.innerHTML = "";
+        const amount = 90;
+        for (let i = 0; i < amount; i++) {
+          const p = document.createElement("i");
+          const hue = randomInt(22, 54);
+          p.style.left = randomInt(0, 100) + "vw";
+          p.style.background = `hsl(${hue} 95% ${randomInt(48, 72)}%)`;
+          p.style.setProperty("--dx", randomInt(-180, 180) + "px");
+          p.style.setProperty("--rot", randomInt(380, 1300) + "deg");
+          p.style.animationDuration = (randomInt(2600, 5200) / 1000) + "s";
+          p.style.animationDelay = (randomInt(0, 850) / 1000) + "s";
+          confetti.appendChild(p);
+        }
+        setTimeout(() => confetti.innerHTML = "", 6500);
+      }
+
+      function resetResult() {
+        if (spinning || !storeLoaded) return;
+        winnerBox.className = "winner-box empty";
+        winnerBox.textContent = "Результат з’явиться після прокручування";
+        createSequence();
+        status.className = "status ok";
+        status.textContent = ``;
+      }
+
+      function spin() {
+        if (spinning || !storeLoaded || pool.length < 2) return;
+        spinning = true;
+        spinBtn.disabled = true;
+        resetBtn.disabled = true;
+        winnerBox.className = "winner-box empty";
+        winnerBox.textContent = "Визначаємо призовий танк…";
+
+        createSequence();
+
+        const FIXED_WINNER_NAME = "ELC EVEN 90";
+        const winner = pool.find(file => tankTitle(file).toLowerCase() === FIXED_WINNER_NAME.toLowerCase());
+
+        if (!winner) {
+          status.className = "status err";
+          status.textContent = "";
+          spinning = false;
+          spinBtn.disabled = false;
+          resetBtn.disabled = false;
+          return;
+        }
+
+        const safeStart = pool.length * 11;
+        const safeEnd = pool.length * 14;
+        const candidateIndexes = [];
+        for (let i = safeStart; i < Math.min(safeEnd, sequence.length); i++) {
+          if (sequence[i] === winner) candidateIndexes.push(i);
+        }
+        const targetIndex = candidateIndexes[randomInt(0, candidateIndexes.length - 1)];
+
+        const randomInsideCard = randomInt(34, CARD_W - 34);
+        const markerX = rouletteWindow.clientWidth / 2;
+        currentX = markerX - (targetIndex * STEP + randomInsideCard);
+
+        const duration = randomInt(22000, 30000);
+        const curves = [
+          "cubic-bezier(.08,.61,.08,1)",
+          "cubic-bezier(.06,.66,.04,1)",
+          "cubic-bezier(.10,.58,.05,1)",
+          "cubic-bezier(.07,.62,.03,1)"
+        ];
+
+        requestAnimationFrame(() => {
+          track.style.transition = `transform ${duration}ms ${curves[randomInt(0, curves.length - 1)]}`;
+          track.style.transform = `translate3d(${currentX}px,0,0)`;
+        });
+
+        status.className = "status";
+        status.textContent = "";
+
+        setTimeout(() => {
+          showWinner(winner);
+          status.className = "status ok";
+          status.textContent = `Виграшний танк: ${tankTitle(winner)}`;
+          spinning = false;
+          spinBtn.disabled = false;
+          resetBtn.disabled = false;
+        }, duration + 120);
+      }
+
+      function setLoader(progress, text) {
+        const safe = Math.max(0, Math.min(100, Math.round(progress)));
+        loaderPercent.textContent = safe + "%";
+        loaderBar.style.width = safe + "%";
+        loaderText.textContent = text;
+      }
+
+      function simulateStoreLoad() {
+        if (loadingStore || storeLoaded || !fullPool.length) return;
+
+        loadingStore = true;
+        loadStoreBtn.disabled = true;
+        spinBtn.disabled = true;
+        resetBtn.disabled = true;
+        loaderPanel.classList.add("visible");
+        rouletteWindow.classList.add("loading");
+        track.innerHTML = "";
+        pool = [];
+        tankCount.textContent = "0";
+        setLoader(0, "Підключення до преміум-магазину...");
+
+        const shuffledPool = shuffled(fullPool);
+        const total = shuffledPool.length;
+        let index = 0;
+
+        const stages = [
+          "Підключення до преміум-магазину...",
+          "Перевірка доступних пропозицій...",
+          "Отримання моделей танків...",
+          "Синхронізація каталогу...",
+          "Формування призового списку..."
+        ];
+
+        function revealNext() {
+          if (index >= total) {
+            setLoader(100, "Каталог преміумтанків завантажено");
+            rouletteWindow.classList.remove("loading");
+            storeLoaded = true;
+            loadingStore = false;
+            spinBtn.disabled = false;
+            resetBtn.disabled = false;
+            loadStoreBtn.textContent = "✓ ПРЕМІУМТАНКИ ЗАВАНТАЖЕНО";
+            setTimeout(() => loaderPanel.classList.remove("visible"), 1400);
+            return;
+          }
+
+          pool.push(shuffledPool[index]);
+          tankCount.textContent = String(pool.length);
+          const progress = ((index + 1) / total) * 100;
+          const stageIndex = Math.min(stages.length - 1, Math.floor(progress / 21));
+          setLoader(progress, `Додано: ${tankTitle(shuffledPool[index])}`);
+
+          if (index === 0) rouletteWindow.classList.remove("loading");
+          showLatestLoadedTank(shuffledPool[index]);
+
+          index += 1;
+          const delay = 900 + randomInt(120, 260);
+          setTimeout(revealNext, delay);
+        }
+
+        setTimeout(revealNext, 900);
+      }
+
+      function init() {
+        fullPool = Array.isArray(window.TANK_IMAGES)
+          ? [...new Set(window.TANK_IMAGES.filter(name => /\.(png|webp|jpg|jpeg)$/i.test(name)))]
+          : [];
+
+        pool = [];
+        tankCount.textContent = "0";
+        track.innerHTML = "";
+        spinBtn.disabled = true;
+        resetBtn.disabled = true;
+        loadStoreBtn.disabled = !fullPool.length;
+
+        if (!fullPool.length) {
+          loaderPanel.classList.remove("visible");
+          return;
+        }
+      }
+
+      loadStoreBtn.addEventListener("click", simulateStoreLoad);
+      spinBtn.addEventListener("click", spin);
+      resetBtn.addEventListener("click", resetResult);
+      window.addEventListener("resize", () => { if (!spinning) resetResult(); });
+      init();
+    })();
+  </script>
+</body>
+</html>
